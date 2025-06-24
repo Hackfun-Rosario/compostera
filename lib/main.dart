@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
-import 'idea_storage.dart';
+import 'api_compostera.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  await Hive.openBox('ideas');
   runApp(const MyApp());
 }
 
@@ -49,9 +46,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _fetchIdeas() async {
-    setState(() {
-      _ideas = IdeaStorage.getIdeas();
-    });
+    _ideas = await ApiCompostera.getIdeas();
+    setState(() {});
   }
 
   @override
@@ -63,13 +59,12 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      await IdeaStorage.insertIdea(
-        _tituloController.text,
-        _descripcionController.text,
-        DateTime.now().toIso8601String(),
-      );
+      await ApiCompostera.createIdea({
+        'nombre': _tituloController.text,
+        'descripcion': _descripcionController.text,
+      });
       _formKey.currentState!.reset();
-      _fetchIdeas();
+      await _fetchIdeas();
       await showDialog<void>(
         context: context,
         builder:
@@ -93,8 +88,8 @@ class _MyHomePageState extends State<MyHomePage> {
       //   onPressed: () async {
       //     final confirm = await showDialog<bool>(
       //       context: context,
-      //       builder: (context) =>
-      //           AlertDialog(
+      //       builder:
+      //           (context) => AlertDialog(
       //             title: const Text('Confirmación'),
       //             content: const Text('¿Querés borrar todas las ideas?'),
       //             actions: [
@@ -110,10 +105,18 @@ class _MyHomePageState extends State<MyHomePage> {
       //           ),
       //     );
       //     if (confirm == true) {
-      //       await IdeaStorage.clearIdeas();
-      //       ScaffoldMessenger.of(context).showSnackBar(
-      //         const SnackBar(
-      //             content: Text('Todas las ideas han sido borradas')),
+      //       await ApiCompostera.deleteAllIdeas();
+      //       await showDialog<void>(
+      //         context: context,
+      //         builder: (context) => AlertDialog(
+      //           content: const Text('Todas las ideas han sido borradas'),
+      //           actions: [
+      //             TextButton(
+      //               onPressed: () => Navigator.of(context).pop(),
+      //               child: const Text('Cerrar'),
+      //             ),
+      //           ],
+      //         ),
       //       );
       //       _fetchIdeas();
       //     }
@@ -185,14 +188,14 @@ class _MyHomePageState extends State<MyHomePage> {
                             final idea = _ideas[index];
                             return Card(
                               child: ListTile(
-                                title: Text(idea['titulo'] ?? ''),
+                                title: Text(idea['nombre'] ?? ''),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(idea['descripcion'] ?? ''),
-                                    if (idea['created_at'] != null)
+                                    if (idea['fecha'] != null)
                                       Text(
-                                        '${DateTime.tryParse(idea['created_at'] ?? '')}',
+                                        '${DateTime.tryParse(idea['fecha'] ?? '')}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey,
@@ -228,7 +231,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                         ),
                                   );
                                   if (confirm == true) {
-                                    await IdeaStorage.deleteIdeaByID(
+                                    await ApiCompostera.deleteIdeaById(
                                       idea['id'],
                                     );
                                     await _fetchIdeas();
