@@ -21,7 +21,8 @@ class DBHelper {
           CREATE TABLE ideas(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             titulo TEXT,
-            descripcion TEXT
+            descripcion TEXT,
+            created_at TEXT
           )
         ''');
       },
@@ -33,12 +34,18 @@ class DBHelper {
     return await dbClient.query('ideas', orderBy: 'id DESC');
   }
 
-  static Future<void> insertIdea(String titulo, String descripcion) async {
+  static Future<void> insertIdea(String titulo, String descripcion, String fecha) async {
     final dbClient = await db;
     await dbClient.insert('ideas', {
       'titulo': titulo,
       'descripcion': descripcion,
+      'created_at': fecha,
     });
+  }
+
+  static Future<void> deleteIdeaByID(int id) async {
+    final dbClient = await db;
+    await dbClient.delete('ideas', where: 'id = ?', whereArgs: [id]);
   }
 
   static Future<void> clearIdeas() async {

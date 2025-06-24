@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-import 'db_helper.dart';
+import 'idea_storage.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox('ideas');
   runApp(const MyApp());
 }
 
@@ -14,7 +18,10 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Semillero de ideas de Hackfun',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.dark,
+        ),
       ),
       home: const MyHomePage(),
     );
@@ -42,9 +49,8 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _fetchIdeas() async {
-    final ideas = await DBHelper.getIdeas();
     setState(() {
-      _ideas = ideas;
+      _ideas = IdeaStorage.getIdeas();
     });
   }
 
@@ -57,44 +63,81 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
-      await DBHelper.insertIdea(
+      await IdeaStorage.insertIdea(
         _tituloController.text,
         _descripcionController.text,
-        // DateTime.now().toIso8601String(),
+        DateTime.now().toIso8601String(),
       );
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Idea guardada!')));
       _formKey.currentState!.reset();
-      await _fetchIdeas();
+      _fetchIdeas();
+      await showDialog<void>(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              content: const Text('Idea guardada!'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cerrar'),
+                ),
+              ],
+            ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text('Compostera de ideas'),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await DBHelper.clearIdeas();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Todas las ideas han sido borradas')),
-          );
-          _fetchIdeas();
-        },
-        tooltip: 'Borrar todas las ideas',
-        child: const Icon(Icons.delete),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () async {
+      //     final confirm = await showDialog<bool>(
+      //       context: context,
+      //       builder: (context) =>
+      //           AlertDialog(
+      //             title: const Text('Confirmación'),
+      //             content: const Text('¿Querés borrar todas las ideas?'),
+      //             actions: [
+      //               TextButton(
+      //                 onPressed: () => Navigator.of(context).pop(false),
+      //                 child: const Text('No'),
+      //               ),
+      //               TextButton(
+      //                 onPressed: () => Navigator.of(context).pop(true),
+      //                 child: const Text('Sí'),
+      //               ),
+      //             ],
+      //           ),
+      //     );
+      //     if (confirm == true) {
+      //       await IdeaStorage.clearIdeas();
+      //       ScaffoldMessenger.of(context).showSnackBar(
+      //         const SnackBar(
+      //             content: Text('Todas las ideas han sido borradas')),
+      //       );
+      //       _fetchIdeas();
+      //     }
+      //   },
+      //   tooltip: 'Borrar todas las ideas',
+      //   child: const Icon(Icons.delete),
+      // ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(26.0),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                'Compostera de ideas',
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Guardá tus ideas y compartilas con la comunidad',
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+              const SizedBox(height: 24),
               TextFormField(
                 controller: _tituloController,
                 decoration: const InputDecoration(labelText: 'Título'),
@@ -118,9 +161,18 @@ class _MyHomePageState extends State<MyHomePage> {
               const SizedBox(height: 24),
               ElevatedButton(onPressed: _submit, child: const Text('Guardar')),
               const SizedBox(height: 32),
-              const Text(
-                'Ideas guardadas:',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Text(
+                    'Ideas guardadas:',
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Recargar ideas',
+                    onPressed: _fetchIdeas,
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               Expanded(
@@ -138,9 +190,9 @@ class _MyHomePageState extends State<MyHomePage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(idea['descripcion'] ?? ''),
-                                    if (idea['fecha'] != null)
+                                    if (idea['created_at'] != null)
                                       Text(
-                                        'Fecha: ${DateTime.tryParse(idea['fecha'] ?? '')?.toLocal().toString().substring(0, 19) ?? ''}',
+                                        '${DateTime.tryParse(idea['created_at'] ?? '')}',
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey,
@@ -148,6 +200,59 @@ class _MyHomePageState extends State<MyHomePage> {
                                       ),
                                   ],
                                 ),
+                                onLongPress: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder:
+                                        (context) => AlertDialog(
+                                          title: const Text('Confirmación'),
+                                          content: const Text(
+                                            '¿Querés borrar esta idea?',
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed:
+                                                  () => Navigator.of(
+                                                    context,
+                                                  ).pop(false),
+                                              child: const Text('No'),
+                                            ),
+                                            TextButton(
+                                              onPressed:
+                                                  () => Navigator.of(
+                                                    context,
+                                                  ).pop(true),
+                                              child: const Text('Si'),
+                                            ),
+                                          ],
+                                        ),
+                                  );
+                                  if (confirm == true) {
+                                    await IdeaStorage.deleteIdeaByID(
+                                      idea['id'],
+                                    );
+                                    await _fetchIdeas();
+                                    await showDialog<void>(
+                                      context: context,
+                                      builder:
+                                          (context) => AlertDialog(
+                                            content: const Text(
+                                              'Idea eliminada!',
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed:
+                                                    () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).pop(),
+                                                child: const Text('Cerrar'),
+                                              ),
+                                            ],
+                                          ),
+                                    );
+                                  }
+                                },
                               ),
                             );
                           },
