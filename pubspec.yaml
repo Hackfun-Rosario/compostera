@@ -16,7 +16,9 @@ dependencies:
   flutter:
     sdk: flutter
 #  cupertino_icons: ^1.0.8
+  flutter_spinkit: ^5.2.1
   http: ^1.4.0
+  protontime: ^2.0.0
 
 dev_dependencies:
   flutter_test:

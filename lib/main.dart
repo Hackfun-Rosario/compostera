@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:protontime/protontime.dart';
 
 import 'api_compostera.dart';
+import 'utils.dart';
+
+GlobalKey navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Semillero de ideas de Hackfun',
+      navigatorKey: GlobalKey<NavigatorState>(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
@@ -46,7 +51,11 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _fetchIdeas() async {
+    // Utils.showProgressDialog(context: context, text: 'Cargando ideas...');
     _ideas = await ApiCompostera.getIdeas();
+    // if (mounted) {
+    //   Utils.closeDialog(context: context);
+    // }
     setState(() {});
   }
 
@@ -65,19 +74,9 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       _formKey.currentState!.reset();
       await _fetchIdeas();
-      await showDialog<void>(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              content: const Text('Idea guardada!'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cerrar'),
-                ),
-              ],
-            ),
-      );
+      ScaffoldMessenger.of(
+        navigatorKey.currentContext!,
+      ).showSnackBar(SnackBar(content: Text('Idea guardada!')));
     }
   }
 
@@ -86,39 +85,48 @@ class _MyHomePageState extends State<MyHomePage> {
     return Scaffold(
       // floatingActionButton: FloatingActionButton(
       //   onPressed: () async {
+      //     final passwordController = TextEditingController();
+      //     String? password;
       //     final confirm = await showDialog<bool>(
       //       context: context,
       //       builder:
       //           (context) => AlertDialog(
       //             title: const Text('Confirmación'),
-      //             content: const Text('¿Querés borrar todas las ideas?'),
+      //             content: Column(
+      //               mainAxisSize: MainAxisSize.min,
+      //               children: [
+      //                 const Text('Contraseña para eliminar la idea:'),
+      //                 const SizedBox(height: 12),
+      //                 TextField(
+      //                   controller: passwordController,
+      //                   obscureText: true,
+      //                   decoration: const InputDecoration(
+      //                     labelText: 'Contraseña',
+      //                   ),
+      //                 ),
+      //               ],
+      //             ),
       //             actions: [
       //               TextButton(
       //                 onPressed: () => Navigator.of(context).pop(false),
       //                 child: const Text('No'),
       //               ),
       //               TextButton(
-      //                 onPressed: () => Navigator.of(context).pop(true),
-      //                 child: const Text('Sí'),
+      //                 onPressed: () {
+      //                   password = passwordController.text;
+      //                   Navigator.of(context).pop(true);
+      //                 },
+      //                 child: const Text('Si'),
       //               ),
       //             ],
       //           ),
       //     );
-      //     if (confirm == true) {
-      //       await ApiCompostera.deleteAllIdeas();
-      //       await showDialog<void>(
-      //         context: context,
-      //         builder: (context) => AlertDialog(
-      //           content: const Text('Todas las ideas han sido borradas'),
-      //           actions: [
-      //             TextButton(
-      //               onPressed: () => Navigator.of(context).pop(),
-      //               child: const Text('Cerrar'),
-      //             ),
-      //           ],
-      //         ),
-      //       );
-      //       _fetchIdeas();
+      //     if (confirm == true && password != null && password!.isNotEmpty) {
+      //       await ApiCompostera.deleteAllIdeas(password: password!);
+      //       await _fetchIdeas();
+      //       ScaffoldMessenger.of(
+      //         navigatorKey.currentContext!,
+      //       ).showSnackBar(SnackBar(content: Text('Idea eliminada!')));
       //     }
       //   },
       //   tooltip: 'Borrar todas las ideas',
@@ -133,14 +141,14 @@ class _MyHomePageState extends State<MyHomePage> {
             children: [
               Text(
                 'Compostera de ideas',
-                style: Theme.of(context).textTheme.headlineMedium,
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               Text(
-                'Guardá tus ideas y compartilas con la comunidad',
-                style: Theme.of(context).textTheme.bodyLarge,
+                'Compartí tus ideas o inspirate con las de otros :)',
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
               TextFormField(
                 controller: _tituloController,
                 decoration: const InputDecoration(labelText: 'Título'),
@@ -154,7 +162,7 @@ class _MyHomePageState extends State<MyHomePage> {
               TextFormField(
                 controller: _descripcionController,
                 decoration: const InputDecoration(labelText: 'Descripción'),
-                maxLines: 5,
+                maxLines: 4,
                 validator:
                     (value) =>
                         value == null || value.isEmpty
@@ -162,7 +170,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             : null,
               ),
               const SizedBox(height: 24),
-              ElevatedButton(onPressed: _submit, child: const Text('Guardar')),
+              FilledButton(onPressed: _submit, child: const Text('Guardar')),
               const SizedBox(height: 32),
               Row(
                 children: [
@@ -173,7 +181,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     tooltip: 'Recargar ideas',
-                    onPressed: _fetchIdeas,
+                    onPressed: () => _fetchIdeas(),
                   ),
                 ],
               ),
@@ -195,7 +203,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                     Text(idea['descripcion'] ?? ''),
                                     if (idea['fecha'] != null)
                                       Text(
-                                        '${DateTime.tryParse(idea['fecha'] ?? '')}',
+                                        Protontime.format(
+                                          DateTime.tryParse(idea['fecha'])!,
+                                          language: 'es',
+                                        ),
                                         style: const TextStyle(
                                           fontSize: 12,
                                           color: Colors.grey,
@@ -204,13 +215,30 @@ class _MyHomePageState extends State<MyHomePage> {
                                   ],
                                 ),
                                 onLongPress: () async {
+                                  final passwordController =
+                                      TextEditingController();
+                                  String? password;
                                   final confirm = await showDialog<bool>(
                                     context: context,
                                     builder:
                                         (context) => AlertDialog(
                                           title: const Text('Confirmación'),
-                                          content: const Text(
-                                            '¿Querés borrar esta idea?',
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Text(
+                                                'Contraseña para eliminar la idea:',
+                                              ),
+                                              const SizedBox(height: 12),
+                                              TextField(
+                                                controller: passwordController,
+                                                obscureText: true,
+                                                decoration:
+                                                    const InputDecoration(
+                                                      labelText: 'Contraseña',
+                                                    ),
+                                              ),
+                                            ],
                                           ),
                                           actions: [
                                             TextButton(
@@ -221,38 +249,30 @@ class _MyHomePageState extends State<MyHomePage> {
                                               child: const Text('No'),
                                             ),
                                             TextButton(
-                                              onPressed:
-                                                  () => Navigator.of(
-                                                    context,
-                                                  ).pop(true),
+                                              onPressed: () {
+                                                password =
+                                                    passwordController.text;
+                                                Navigator.of(context).pop(true);
+                                              },
                                               child: const Text('Si'),
                                             ),
                                           ],
                                         ),
                                   );
-                                  if (confirm == true) {
+                                  if (confirm == true &&
+                                      password != null &&
+                                      password!.isNotEmpty) {
                                     await ApiCompostera.deleteIdeaById(
-                                      idea['id'],
+                                      id: idea['id'],
+                                      password: password!,
                                     );
                                     await _fetchIdeas();
-                                    await showDialog<void>(
-                                      context: context,
-                                      builder:
-                                          (context) => AlertDialog(
-                                            content: const Text(
-                                              'Idea eliminada!',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed:
-                                                    () =>
-                                                        Navigator.of(
-                                                          context,
-                                                        ).pop(),
-                                                child: const Text('Cerrar'),
-                                              ),
-                                            ],
-                                          ),
+                                    ScaffoldMessenger.of(
+                                      navigatorKey.currentContext!,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Idea eliminada!'),
+                                      ),
                                     );
                                   }
                                 },

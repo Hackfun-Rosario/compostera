@@ -23,6 +23,9 @@ class ApiCompostera {
   static Future<List<Map<String, dynamic>>> getIdeas() async {
     final url = Uri.parse('$baseUrl/api/ideas');
     final response = await http.get(url);
+
+    // log(response.body);
+
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);
       return data.cast<Map<String, dynamic>>();
@@ -31,13 +34,16 @@ class ApiCompostera {
     }
   }
 
-  static Future<http.Response> deleteIdeaById(String id) async {
-    final url = Uri.parse('$baseUrl/api/ideas?id=$id');
+  static Future<http.Response> deleteIdeaById({
+    required String id,
+    required String password,
+  }) async {
+    final url = Uri.parse('$baseUrl/api/ideas?id=$id&password=$password');
     return await http.delete(url);
   }
 
-  static Future<http.Response> deleteAllIdeas() async {
-    final url = Uri.parse('$baseUrl/api/ideas?todas=true');
+  static Future<http.Response> deleteAllIdeas({required String password,}) async {
+    final url = Uri.parse('$baseUrl/api/ideas?todas=true&password=$password');
 
     final res = await http.delete(url);
     log('deleteAllIdeas: ${res.statusCode} - ${res.body}');
