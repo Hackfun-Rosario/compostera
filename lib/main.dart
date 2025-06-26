@@ -20,7 +20,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       builder:
-          (context, child) => ResponsiveBreakpoints.builder(
+          (context, child) =>
+          ResponsiveBreakpoints.builder(
             child: child!,
             breakpoints: [
               const Breakpoint(start: 0, end: 450, name: MOBILE),
@@ -166,7 +167,9 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Flex(
           direction: Axis.horizontal,
           children: [
-            ResponsiveBreakpoints.of(context).isDesktop
+            ResponsiveBreakpoints
+                .of(context)
+                .isDesktop
                 ? Flexible(flex: 2, child: SizedBox.expand())
                 : SizedBox.shrink(),
             Flexible(
@@ -178,13 +181,19 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Text(
                       'Compostera de ideas',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .headlineSmall,
                     ),
                     Text('Version: ${packageInfo?.version}'),
                     const SizedBox(height: 12),
                     Text(
                       'Un lugar para compartir ideas y buscar inspiración.',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                      style: Theme
+                          .of(context)
+                          .textTheme
+                          .bodyMedium,
                     ),
                     const SizedBox(height: 32),
                     FilledButton.icon(
@@ -244,18 +253,21 @@ class _MyHomePageState extends State<MyHomePage> {
                         );
                       },
                       label: Text('Plantar una idea'),
-                      icon: Icon(Icons.add),
+                      icon: Image.asset('assets/images/plus.png', color: Colors.black),
                     ),
                     const SizedBox(height: 32),
                     Row(
                       children: [
                         Text(
                           'Ideas',
-                          style: Theme.of(context).textTheme.headlineMedium,
+                          style: Theme
+                              .of(context)
+                              .textTheme
+                              .headlineMedium,
                         ),
                         SizedBox(width: 8),
                         IconButton(
-                          icon: Image.asset('assets/refresh.png'),
+                          icon: Image.asset('assets/images/refresh.png'),
                           tooltip: 'Recargar ideas',
                           onPressed: () async {
                             Utils.showProgressDialog(context: context);
@@ -270,24 +282,26 @@ class _MyHomePageState extends State<MyHomePage> {
                     const SizedBox(height: 8),
                     Expanded(
                       child:
-                          _ideas.isEmpty
-                              ? const Text('No hay ideas guardadas.')
-                              : ListView.builder(
-                                itemCount: _ideas.length,
-                                itemBuilder: (context, index) {
-                                  final idea = _ideas[index];
-                                  return IdeaCard(
-                                    idea: idea,
-                                    fetchIdeas: fetchIdeas,
-                                  );
-                                },
-                              ),
+                      _ideas.isEmpty
+                          ? const Text('No hay ideas guardadas.')
+                          : ListView.builder(
+                        itemCount: _ideas.length,
+                        itemBuilder: (context, index) {
+                          final idea = _ideas[index];
+                          return IdeaCard(
+                            idea: idea,
+                            fetchIdeas: fetchIdeas,
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-            ResponsiveBreakpoints.of(context).isDesktop
+            ResponsiveBreakpoints
+                .of(context)
+                .isDesktop
                 ? Flexible(flex: 2, child: SizedBox.expand())
                 : SizedBox.shrink(),
           ],
@@ -312,13 +326,16 @@ class IdeaCard extends StatelessWidget {
         padding: const EdgeInsets.all(6.0),
         child: ListTile(
           leading: Image.asset(
-            'assets/leaf.png',
+            'assets/images/leaf.png',
             color: Colors.green,
             width: 25,
           ),
           title: Text(
             idea['nombre'],
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme
+                .of(context)
+                .textTheme
+                .titleMedium,
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -326,7 +343,8 @@ class IdeaCard extends StatelessWidget {
               Text(idea['descripcion'] ?? ''),
 
               Text(
-                'Agregada ${Protontime.format(DateTime.tryParse(idea['fecha'])!, language: 'es')} por $autor',
+                'Agregada ${Protontime.format(DateTime.tryParse(idea['fecha'])!,
+                    language: 'es')} por $autor',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
@@ -337,7 +355,8 @@ class IdeaCard extends StatelessWidget {
             final confirm = await showDialog<bool>(
               context: context,
               builder:
-                  (context) => AlertDialog(
+                  (context) =>
+                  AlertDialog(
                     title: const Text('Confirmación'),
                     content: Column(
                       mainAxisSize: MainAxisSize.min,
