@@ -24,7 +24,7 @@ class ApiCompostera {
     final url = Uri.parse('$baseUrl/api/ideas');
     final response = await http.get(url);
 
-    // log(response.body);
+    log(response.body);
 
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(response.body);

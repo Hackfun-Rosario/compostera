@@ -1,10 +1,10 @@
+import 'package:compostera/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:protontime/protontime.dart';
 
 import 'api_compostera.dart';
-import 'utils.dart';
 
-GlobalKey navigatorKey = GlobalKey<NavigatorState>();
+// GlobalKey navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Semillero de ideas de Hackfun',
-      navigatorKey: GlobalKey<NavigatorState>(),
+      // navigatorKey: GlobalKey<NavigatorState>(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
@@ -66,17 +66,76 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _insertIdea(
+    BuildContext context,
+    GlobalKey<FormState> formKey,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Nueva idea'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _tituloController,
+                decoration: const InputDecoration(labelText: 'Título'),
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Ingrese un título'
+                            : null,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _descripcionController,
+                decoration: const InputDecoration(labelText: 'Descripción'),
+                maxLines: 4,
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Ingrese una descripción'
+                            : null,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Utils.showProgressDialog(context: context);
+                await _submit(context).then((_) {
+                  if (context.mounted) {
+                    Utils.closeDialog(context: context);
+                    Navigator.of(context).pop();
+                  }
+                });
+              },
+              child: const Text('Guardar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _submit(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
       await ApiCompostera.createIdea({
         'nombre': _tituloController.text,
         'descripcion': _descripcionController.text,
       });
       _formKey.currentState!.reset();
-      await _fetchIdeas();
-      ScaffoldMessenger.of(
-        navigatorKey.currentContext!,
-      ).showSnackBar(SnackBar(content: Text('Idea guardada!')));
+      Future.delayed(Duration(seconds: 1)).then((_) async {
+        await _fetchIdeas();
+        const snackBar = SnackBar(content: Text('Idea guardada!'));
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      });
     }
   }
 
@@ -148,29 +207,41 @@ class _MyHomePageState extends State<MyHomePage> {
                 'Compartí tus ideas o inspirate con las de otros :)',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _tituloController,
-                decoration: const InputDecoration(labelText: 'Título'),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Ingrese un título'
-                            : null,
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: () async {
+                  await _insertIdea(context, _formKey);
+                },
+                child: Text('Guardar nueva idea'),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(labelText: 'Descripción'),
-                maxLines: 4,
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Ingrese una descripción'
-                            : null,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(onPressed: _submit, child: const Text('Guardar')),
+              // const SizedBox(height: 12),
+              // TextFormField(
+              //   controller: _tituloController,
+              //   decoration: const InputDecoration(labelText: 'Título'),
+              //   validator:
+              //       (value) =>
+              //           value == null || value.isEmpty
+              //               ? 'Ingrese un título'
+              //               : null,
+              // ),
+              // const SizedBox(height: 16),
+              // TextFormField(
+              //   controller: _descripcionController,
+              //   decoration: const InputDecoration(labelText: 'Descripción'),
+              //   maxLines: 4,
+              //   validator:
+              //       (value) =>
+              //           value == null || value.isEmpty
+              //               ? 'Ingrese una descripción'
+              //               : null,
+              // ),
+              // const SizedBox(height: 24),
+              // FilledButton(
+              //   onPressed: () async {
+              //     await _submit(context);
+              //   },
+              //   child: const Text('Guardar'),
+              // ),
               const SizedBox(height: 32),
               Row(
                 children: [
@@ -181,7 +252,11 @@ class _MyHomePageState extends State<MyHomePage> {
                   IconButton(
                     icon: const Icon(Icons.refresh),
                     tooltip: 'Recargar ideas',
-                    onPressed: () => _fetchIdeas(),
+                    onPressed: () async {
+                      Utils.showProgressDialog(context: context);
+                      await _fetchIdeas();
+                      if (context.mounted) Utils.closeDialog(context: context);
+                    },
                   ),
                 ],
               ),
@@ -242,17 +317,27 @@ class _MyHomePageState extends State<MyHomePage> {
                                           ),
                                           actions: [
                                             TextButton(
-                                              onPressed:
-                                                  () => Navigator.of(
-                                                    context,
-                                                  ).pop(false),
+                                              onPressed: () {
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(false);
+                                                    });
+                                              },
                                               child: const Text('No'),
                                             ),
                                             TextButton(
                                               onPressed: () {
                                                 password =
                                                     passwordController.text;
-                                                Navigator.of(context).pop(true);
+
+                                                WidgetsBinding.instance
+                                                    .addPostFrameCallback((_) {
+                                                      Navigator.of(
+                                                        context,
+                                                      ).pop(true);
+                                                    });
                                               },
                                               child: const Text('Si'),
                                             ),
@@ -266,14 +351,18 @@ class _MyHomePageState extends State<MyHomePage> {
                                       id: idea['id'],
                                       password: password!,
                                     );
-                                    await _fetchIdeas();
-                                    ScaffoldMessenger.of(
-                                      navigatorKey.currentContext!,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Idea eliminada!'),
-                                      ),
-                                    );
+                                    Future.delayed(Duration(seconds: 1)).then((
+                                      _,
+                                    ) async {
+                                      await _fetchIdeas();
+                                      const snackBar = SnackBar(
+                                        content: Text('Idea eliminada'),
+                                      );
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(snackBar);
+                                    });
                                   }
                                 },
                               ),
