@@ -2,6 +2,7 @@ import 'dart:developer';
 
 import 'package:compostera/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:protontime/protontime.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
@@ -55,18 +56,18 @@ class _MyHomePageState extends State<MyHomePage> {
   final _aliasController = TextEditingController();
 
   List<Map<String, dynamic>> _ideas = [];
-
-  // List<Map<String, dynamic>> _ideasPares = [];
-  // List<Map<String, dynamic>> _ideasImpares = [];
+  PackageInfo? packageInfo;
 
   @override
   void initState() {
     super.initState();
     fetchIdeas();
+
   }
 
   Future<void> fetchIdeas() async {
     _ideas = await ApiCompostera.getIdeas();
+    packageInfo = await PackageInfo.fromPlatform();
     setState(() {});
   }
 
@@ -180,6 +181,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       'Compostera de ideas',
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
+                    Text('Version: ${packageInfo?.version}'),
                     const SizedBox(height: 12),
                     Text(
                       'Un lugar para compartir ideas y buscar inspiración.',
@@ -271,16 +273,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       child:
                           _ideas.isEmpty
                               ? const Text('No hay ideas guardadas.')
-                              :
-                              // !ResponsiveBreakpoints.of(context).isDesktop
-                              //     ? Flex(
-                              //       direction: Axis.horizontal,
-                              //       children: [
-                              //         // Columna única
-                              //         Flexible(
-                              //           flex: 80,
-                              //           child:
-                              ListView.builder(
+                              :ListView.builder(
                                 itemCount: _ideas.length,
                                 itemBuilder: (context, index) {
                                   final idea = _ideas[index];
