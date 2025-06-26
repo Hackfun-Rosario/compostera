@@ -52,6 +52,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
   final _descripcionController = TextEditingController();
+  final _aliasController = TextEditingController();
 
   List<Map<String, dynamic>> _ideas = [];
 
@@ -73,6 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void dispose() {
     _tituloController.dispose();
     _descripcionController.dispose();
+    _aliasController.dispose();
     super.dispose();
   }
 
@@ -88,10 +90,12 @@ class _MyHomePageState extends State<MyHomePage> {
       await ApiCompostera.createIdea({
         'nombre': _tituloController.text,
         'descripcion': _descripcionController.text,
+        'alias': _aliasController.text,
       });
       _formKey.currentState!.reset();
       _tituloController.text = '';
       _descripcionController.text = '';
+      _aliasController.text = '';
       Future.delayed(Duration(seconds: 1)).then((_) async {
         await fetchIdeas();
         if (!context.mounted) return;
@@ -197,6 +201,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                     decoration: const InputDecoration(
                                       labelText: 'Título (requerido)',
                                     ),
+                                    keyboardType: TextInputType.text,
                                   ),
                                   const SizedBox(height: 16),
                                   TextField(
@@ -204,7 +209,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                     decoration: const InputDecoration(
                                       labelText: 'Descripción',
                                     ),
-                                    maxLines: 4,
+                                    maxLines: 3, // Set this
+                                    keyboardType: TextInputType.multiline,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: _aliasController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nombre o alias',
+                                    ),
+                                    keyboardType: TextInputType.text,
                                   ),
                                 ],
                               ),
@@ -299,83 +313,90 @@ class IdeaCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final autor = idea['alias'] ?? 'Anónimo';
+
     return Card(
-      child: ListTile(
-        leading: Image.asset('assets/leaf.png', color: Colors.green, width: 25),
-        title: Text(
-          idea['nombre'],
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(idea['descripcion'] ?? ''),
-            if (idea['fecha'] != null)
+      child: Padding(
+        padding: const EdgeInsets.all(6.0),
+        child: ListTile(
+          leading: Image.asset(
+            'assets/leaf.png',
+            color: Colors.green,
+            width: 25,
+          ),
+          title: Text(
+            idea['nombre'],
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(idea['descripcion'] ?? ''),
+
+
               Text(
-                Protontime.format(
-                  DateTime.tryParse(idea['fecha'])!,
-                  language: 'es',
-                ),
+                'Agregada ${Protontime.format(DateTime.tryParse(idea['fecha'])!, language: 'es')} por $autor',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
-          ],
-        ),
-        onLongPress: () async {
-          final passwordController = TextEditingController();
-          String? password;
-          final confirm = await showDialog<bool>(
-            context: context,
-            builder:
-                (context) => AlertDialog(
-                  title: const Text('Confirmación'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Contraseña para eliminar la idea:'),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Contraseña',
+            ],
+          ),
+          onLongPress: () async {
+            final passwordController = TextEditingController();
+            String? password;
+            final confirm = await showDialog<bool>(
+              context: context,
+              builder:
+                  (context) => AlertDialog(
+                    title: const Text('Confirmación'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Contraseña para eliminar la idea:'),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Contraseña',
+                          ),
                         ),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            Navigator.of(context).pop(false);
+                          });
+                        },
+                        child: const Text('No'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          password = passwordController.text;
+
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            Navigator.of(context).pop(true);
+                          });
+                        },
+                        child: const Text('Si'),
                       ),
                     ],
                   ),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(context).pop(false);
-                        });
-                      },
-                      child: const Text('No'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        password = passwordController.text;
-
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.of(context).pop(true);
-                        });
-                      },
-                      child: const Text('Si'),
-                    ),
-                  ],
-                ),
-          );
-          if (confirm == true && password != null && password!.isNotEmpty) {
-            await ApiCompostera.deleteIdeaById(
-              id: idea['id'],
-              password: password!,
             );
-            Future.delayed(Duration(seconds: 1)).then((_) async {
-              await fetchIdeas();
-              if (!context.mounted) return;
-              mySnackbar(context, 'Idea eliminada');
-            });
-          }
-        },
+            if (confirm == true && password != null && password!.isNotEmpty) {
+              await ApiCompostera.deleteIdeaById(
+                id: idea['id'],
+                password: password!,
+              );
+              Future.delayed(Duration(seconds: 1)).then((_) async {
+                await fetchIdeas();
+                if (!context.mounted) return;
+                mySnackbar(context, 'Idea eliminada');
+              });
+            }
+          },
+        ),
       ),
     );
   }

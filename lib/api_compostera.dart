@@ -12,6 +12,9 @@ class ApiCompostera {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(idea),
     );
+
+    log(response.body);
+
     if (response.statusCode == 200 || response.statusCode == 201) {
       // final data = jsonDecode(response.body);
       // return data.cast<Map<String, dynamic>>();
