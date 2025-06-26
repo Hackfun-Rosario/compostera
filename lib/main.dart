@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:compostera/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:protontime/protontime.dart';
@@ -30,7 +32,7 @@ class MyApp extends StatelessWidget {
       // navigatorKey: GlobalKey<NavigatorState>(),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
+          seedColor: Colors.brown,
           brightness: Brightness.dark,
         ),
       ),
@@ -52,8 +54,9 @@ class _MyHomePageState extends State<MyHomePage> {
   final _descripcionController = TextEditingController();
 
   List<Map<String, dynamic>> _ideas = [];
-  List<Map<String, dynamic>> _ideasPares = [];
-  List<Map<String, dynamic>> _ideasImpares = [];
+
+  // List<Map<String, dynamic>> _ideasPares = [];
+  // List<Map<String, dynamic>> _ideasImpares = [];
 
   @override
   void initState() {
@@ -62,18 +65,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> fetchIdeas() async {
-    // Utils.showProgressDialog(context: context, text: 'Cargando ideas...');
     _ideas = await ApiCompostera.getIdeas();
-    _ideasPares =
-        _ideas.where((i) {
-          // i is odd
-          return _ideas.indexOf(i) % 2 == 0;
-        }).toList();
-    _ideasImpares =
-        _ideas.where((i) {
-          // i is odd
-          return _ideas.indexOf(i) % 2 != 0;
-        }).toList();
     setState(() {});
   }
 
@@ -84,65 +76,15 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  Future<void> _insertIdea(
-    BuildContext context,
-    GlobalKey<FormState> formKey,
-  ) async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Nueva idea'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _tituloController,
-                decoration: const InputDecoration(labelText: 'Título'),
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Ingrese un título'
-                            : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _descripcionController,
-                decoration: const InputDecoration(labelText: 'Descripción'),
-                maxLines: 4,
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Ingrese una descripción'
-                            : null,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Utils.showProgressDialog(context: context);
-                await _submit(context).then((_) {
-                  if (context.mounted) {
-                    Utils.closeDialog(context: context);
-                    Navigator.of(context).pop();
-                  }
-                });
-              },
-              child: const Text('Guardar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _submit(BuildContext context) async {
-    if (_formKey.currentState!.validate()) {
+    Utils.showProgressDialog(context: context);
+    if (_tituloController.text.isEmpty) {
+      if (!context.mounted) return;
+      mySnackbar(context, 'El título es obligatorio');
+      Utils.closeDialog(context: context);
+      return;
+    }
+    try {
       await ApiCompostera.createIdea({
         'nombre': _tituloController.text,
         'descripcion': _descripcionController.text,
@@ -152,10 +94,17 @@ class _MyHomePageState extends State<MyHomePage> {
       _descripcionController.text = '';
       Future.delayed(Duration(seconds: 1)).then((_) async {
         await fetchIdeas();
-        const snackBar = SnackBar(content: Text('Idea guardada!'));
         if (!context.mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+        mySnackbar(context, 'Idea plantada!');
       });
+    } catch (e) {
+      log(e.toString());
+      if (!context.mounted) return;
+      mySnackbar(context, 'Algo salió mal...');
+    } finally {
+      if (context.mounted) {
+        Utils.closeDialog(context: context);
+      }
     }
   }
 
@@ -209,325 +158,133 @@ class _MyHomePageState extends State<MyHomePage> {
       //   child: const Icon(Icons.delete),
       // ),
       body: Padding(
-        padding: const EdgeInsets.all(26.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Compostera de ideas',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Un lugar para compartir ideas o buscar inspiración ',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 32),
-              FilledButton.icon(
-                onPressed: () async {
-                  await _insertIdea(context, _formKey);
-                },
-                label: Text('Guardar una idea'),
-                icon: Icon(Icons.add),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Text(
-                    'Ideas',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.refresh),
-                    tooltip: 'Recargar ideas',
-                    onPressed: () async {
-                      Utils.showProgressDialog(context: context);
-                      await fetchIdeas();
-                      if (context.mounted) Utils.closeDialog(context: context);
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child:
-                    _ideas.isEmpty
-                        ? const Text('No hay ideas guardadas.')
-                        : !ResponsiveBreakpoints.of(context).isDesktop
-                        ? Flex(
-                          direction: Axis.horizontal,
-                          children: [
-                            // Columna única
-                            Flexible(
-                              flex: 80,
-                              child: ListView.builder(
+        padding: const EdgeInsets.all(30.0),
+        child: Flex(
+          direction: Axis.horizontal,
+          children: [
+            ResponsiveBreakpoints.of(context).isDesktop
+                ? Flexible(flex: 2, child: SizedBox.expand())
+                : SizedBox.shrink(),
+            Flexible(
+              flex: 6,
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Compostera de ideas',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Un lugar para compartir ideas y buscar inspiración.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 32),
+                    FilledButton.icon(
+                      onPressed: () async {
+                        await showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Nueva idea'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: _tituloController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Título (requerido)',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextField(
+                                    controller: _descripcionController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Descripción',
+                                    ),
+                                    maxLines: 4,
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () async {
+                                    await _submit(context).then((_) {
+                                      if (context.mounted) {
+                                        Navigator.of(context).pop();
+                                      }
+                                    });
+                                  },
+                                  child: const Text('Plantar'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      label: Text('Plantar una idea'),
+                      icon: Icon(Icons.add),
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Text(
+                          'Ideas',
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.refresh),
+                          tooltip: 'Recargar ideas',
+                          onPressed: () async {
+                            Utils.showProgressDialog(context: context);
+                            await fetchIdeas();
+                            if (context.mounted) {
+                              Utils.closeDialog(context: context);
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child:
+                          _ideas.isEmpty
+                              ? const Text('No hay ideas guardadas.')
+                              :
+                              // !ResponsiveBreakpoints.of(context).isDesktop
+                              //     ? Flex(
+                              //       direction: Axis.horizontal,
+                              //       children: [
+                              //         // Columna única
+                              //         Flexible(
+                              //           flex: 80,
+                              //           child:
+                              ListView.builder(
                                 itemCount: _ideas.length,
                                 itemBuilder: (context, index) {
                                   final idea = _ideas[index];
-                                  return Card(
-                                    child: ListTile(
-                                      title: Text(idea['nombre'] ?? ''),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(idea['descripcion'] ?? ''),
-                                          if (idea['fecha'] != null)
-                                            Text(
-                                              Protontime.format(
-                                                DateTime.tryParse(
-                                                  idea['fecha'],
-                                                )!,
-                                                language: 'es',
-                                              ),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      onLongPress: () async {
-                                        final passwordController =
-                                            TextEditingController();
-                                        String? password;
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder:
-                                              (context) => AlertDialog(
-                                                title: const Text(
-                                                  'Confirmación',
-                                                ),
-                                                content: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    const Text(
-                                                      'Contraseña para eliminar la idea:',
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    TextField(
-                                                      controller:
-                                                          passwordController,
-                                                      obscureText: true,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                            labelText:
-                                                                'Contraseña',
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback(
-                                                            (_) {
-                                                              Navigator.of(
-                                                                context,
-                                                              ).pop(false);
-                                                            },
-                                                          );
-                                                    },
-                                                    child: const Text('No'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      password =
-                                                          passwordController
-                                                              .text;
-
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback(
-                                                            (_) {
-                                                              Navigator.of(
-                                                                context,
-                                                              ).pop(true);
-                                                            },
-                                                          );
-                                                    },
-                                                    child: const Text('Si'),
-                                                  ),
-                                                ],
-                                              ),
-                                        );
-                                        if (confirm == true &&
-                                            password != null &&
-                                            password!.isNotEmpty) {
-                                          await ApiCompostera.deleteIdeaById(
-                                            id: idea['id'],
-                                            password: password!,
-                                          );
-                                          Future.delayed(
-                                            Duration(seconds: 1),
-                                          ).then((_) async {
-                                            await fetchIdeas();
-                                            const snackBar = SnackBar(
-                                              content: Text('Idea eliminada'),
-                                            );
-                                            if (!context.mounted) return;
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(snackBar);
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        )
-                        :
-                        // Dos columnas
-                        Flex(
-                          direction: Axis.horizontal,
-                          children: [
-                            // Primera columna
-                            Flexible(
-                              flex: 80,
-                              child: ListView.builder(
-                                itemCount: _ideasPares.length,
-                                itemBuilder: (context, index) {
-                                  final idea = _ideasPares[index];
-                                  return Card(
-                                    child: ListTile(
-                                      title: Text(idea['nombre'] ?? ''),
-                                      subtitle: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(idea['descripcion'] ?? ''),
-                                          if (idea['fecha'] != null)
-                                            Text(
-                                              Protontime.format(
-                                                DateTime.tryParse(
-                                                  idea['fecha'],
-                                                )!,
-                                                language: 'es',
-                                              ),
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                      onLongPress: () async {
-                                        final passwordController =
-                                            TextEditingController();
-                                        String? password;
-                                        final confirm = await showDialog<bool>(
-                                          context: context,
-                                          builder:
-                                              (context) => AlertDialog(
-                                                title: const Text(
-                                                  'Confirmación',
-                                                ),
-                                                content: Column(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    const Text(
-                                                      'Contraseña para eliminar la idea:',
-                                                    ),
-                                                    const SizedBox(height: 12),
-                                                    TextField(
-                                                      controller:
-                                                          passwordController,
-                                                      obscureText: true,
-                                                      decoration:
-                                                          const InputDecoration(
-                                                            labelText:
-                                                                'Contraseña',
-                                                          ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback(
-                                                            (_) {
-                                                              Navigator.of(
-                                                                context,
-                                                              ).pop(false);
-                                                            },
-                                                          );
-                                                    },
-                                                    child: const Text('No'),
-                                                  ),
-                                                  TextButton(
-                                                    onPressed: () {
-                                                      password =
-                                                          passwordController
-                                                              .text;
-
-                                                      WidgetsBinding.instance
-                                                          .addPostFrameCallback(
-                                                            (_) {
-                                                              Navigator.of(
-                                                                context,
-                                                              ).pop(true);
-                                                            },
-                                                          );
-                                                    },
-                                                    child: const Text('Si'),
-                                                  ),
-                                                ],
-                                              ),
-                                        );
-                                        if (confirm == true &&
-                                            password != null &&
-                                            password!.isNotEmpty) {
-                                          await ApiCompostera.deleteIdeaById(
-                                            id: idea['id'],
-                                            password: password!,
-                                          );
-                                          Future.delayed(
-                                            Duration(seconds: 1),
-                                          ).then((_) async {
-                                            await fetchIdeas();
-                                            const snackBar = SnackBar(
-                                              content: Text('Idea eliminada'),
-                                            );
-                                            if (!context.mounted) return;
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(snackBar);
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            // Segunda columna
-                            Flexible(
-                              flex: 80,
-                              child: ListView.builder(
-                                itemCount: _ideasImpares.length,
-                                itemBuilder: (context, index) {
-                                  final idea = _ideasImpares[index];
                                   return IdeaCard(
                                     idea: idea,
                                     fetchIdeas: fetchIdeas,
                                   );
                                 },
                               ),
-                            ),
-                          ],
-                        ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+            ResponsiveBreakpoints.of(context).isDesktop
+                ? Flexible(flex: 2, child: SizedBox.expand())
+                : SizedBox.shrink(),
+          ],
         ),
       ),
     );
@@ -535,16 +292,20 @@ class _MyHomePageState extends State<MyHomePage> {
 }
 
 class IdeaCard extends StatelessWidget {
-  IdeaCard({super.key, required this.idea, required this.fetchIdeas});
+  const IdeaCard({super.key, required this.idea, required this.fetchIdeas});
 
-  Map<String, dynamic> idea;
-  Future<void> Function() fetchIdeas;
+  final Map<String, dynamic> idea;
+  final Future<void> Function() fetchIdeas;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       child: ListTile(
-        title: Text(idea['nombre'] ?? ''),
+        leading: Image.asset('assets/leaf.png', color: Colors.green, width: 25),
+        title: Text(
+          idea['nombre'],
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -610,13 +371,21 @@ class IdeaCard extends StatelessWidget {
             );
             Future.delayed(Duration(seconds: 1)).then((_) async {
               await fetchIdeas();
-              const snackBar = SnackBar(content: Text('Idea eliminada'));
               if (!context.mounted) return;
-              ScaffoldMessenger.of(context).showSnackBar(snackBar);
+              mySnackbar(context, 'Idea eliminada');
             });
           }
         },
       ),
     );
   }
+}
+
+void mySnackbar(BuildContext context, String message) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(message, style: TextStyle(color: Colors.white70)),
+      backgroundColor: Colors.brown,
+    ),
+  );
 }

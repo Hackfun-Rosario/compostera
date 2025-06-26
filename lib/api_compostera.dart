@@ -13,7 +13,7 @@ class ApiCompostera {
       body: jsonEncode(idea),
     );
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body);
+      // final data = jsonDecode(response.body);
       // return data.cast<Map<String, dynamic>>();
     } else {
       throw Exception('Failed to create idea');
