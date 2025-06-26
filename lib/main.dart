@@ -62,7 +62,6 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     fetchIdeas();
-
   }
 
   Future<void> fetchIdeas() async {
@@ -256,7 +255,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         SizedBox(width: 8),
                         IconButton(
-                          icon: const Icon(Icons.refresh),
+                          icon: Image.asset('assets/refresh.png'),
                           tooltip: 'Recargar ideas',
                           onPressed: () async {
                             Utils.showProgressDialog(context: context);
@@ -273,7 +272,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       child:
                           _ideas.isEmpty
                               ? const Text('No hay ideas guardadas.')
-                              :ListView.builder(
+                              : ListView.builder(
                                 itemCount: _ideas.length,
                                 itemBuilder: (context, index) {
                                   final idea = _ideas[index];
@@ -325,7 +324,6 @@ class IdeaCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(idea['descripcion'] ?? ''),
-
 
               Text(
                 'Agregada ${Protontime.format(DateTime.tryParse(idea['fecha'])!, language: 'es')} por $autor',
