@@ -17,7 +17,7 @@ jobs:
           sdk: stable
 
       # Instala dependencias
-      - run: dart pub get
+      - run: flutter pub get
 
       # Compila tu app web (si usas Flutter cambia el comando)
       - run: flutter compile js -o build/web/main.dart.js web/main.dart
