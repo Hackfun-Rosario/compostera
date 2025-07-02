@@ -18,8 +18,7 @@ jobs:
       # Instala dependencias
       - run: flutter pub get
 
-      # Compila tu app web (si usas Flutter cambia el comando)
-      - run: flutter compile js -o build/web/main.dart.js web/main.dart
+      - run: flutter build web
 
       # Publica a GitHub Pages
       - name: Deploy to GitHub Pages
